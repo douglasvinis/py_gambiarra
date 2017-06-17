@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 
 """
-  Copyright (C) 2016, Douglas Knowman
-  douglasknowman@gmail.com
+  Copyright (C) 2016, Douglas Vinicius
+  douglvini@gmail.com
 
   Distributed under the terms of GNU GPL v3 license.
 
