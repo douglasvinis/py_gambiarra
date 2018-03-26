@@ -33,24 +33,34 @@ def main():
     if filepass:
         password = '-p%s'%filepass
 
+    exit_codes = []
     for filename in filenames:
-        print ("\n>----UNZIP----[ %s ]----UNZIP----<\n"%filename)
-        subprocess.run(['7z','x',filename,password])
+        print ("\n_________%s__________"%filename)
+        exit_codes.append(subprocess.call(['7z','x',filename,password]))
+
+    print ("\n___________[ Results of %i files ]____________\n"%len(filenames))
+    for i in range(len(exit_codes)):
+        result = "[DONE]"
+        if (exit_codes[i] != 0):
+            result = "[FAIL]"
+        print("%s file: %s"%(result, filenames[i]))
 
     # asks and remove extracted 7z files.
     rm = False
-    ask = str(input("Do you wanna remove all 7z extracted files?(y,n): "))
+    ask = str(input("\nDo you wanna remove all DONE extracted zip files? (y,n): "))
     if ask == 'y':
         rm = True
     else :
         rm = False
 
     if rm:
-        print ("\n>-----REMOVE ALL EXTRACTED FILES----<")
-        for filename in filenames:
-            subprocess.run(['rm',filename])
+        done = len(list(filter(lambda x: x==0, exit_codes)))
+        print ("\nremoving all %i extracted files!"%done)
+        for i in range(len(filenames)):
+            if (exit_codes[i] == 0):
+                subprocess.run(['rm',filenames[i]])
     # ending
-    print ("Have a good one. :)")
+    print ("Have a good one!!")
 
 
 if __name__ == "__main__":

@@ -10,3 +10,5 @@ pypacsize.py - specific tool,works only with arch linux distro, get size of all 
 unzipall.py - python script to unzip multiple files with 7z tool.
 
 rawdisk_creator.py - write the input files in the correct head/cylinder/sector bytes of a floppy disk raw .img file.
+
+amenu.py - with helps of "xdg_menu" this scripts list all the applications in the system, and let you run it.
