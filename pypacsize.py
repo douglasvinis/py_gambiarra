@@ -10,40 +10,47 @@
 Get the size of all istalled packets on arch linux distro.
 """
 
-import subprocess, os
+import subprocess, os, sys
 import time as t
 
 LOG_NAMEPATH="./pacsize.log"
+HELP="pypacsize []\npypacsize [-ls] : list by size\npypacsize [-ts] : show total packets size and write on pacsize.log"
 
 def process_packets():
-    size = 0
-    pacs = 0
+    print(">scanning packages...")
+    pacs_info = []
     time = t.time()
 
-    packages = subprocess.check_output(['pacman','-Qq']).splitlines()
-    pacs = len(packages)
-    cnt = 0
+    pac_names = subprocess.check_output(['pacman','-Qq']).splitlines()
+    pac_sizes = subprocess.check_output("pacman -Qi|grep 'Installed Size'", shell=True).splitlines()
     sizecnt = 0
 
-    for pack in packages:
-        p = subprocess.check_output(['pacman','-Qi',pack]).decode('utf-8').splitlines()
-        p = list(filter(lambda x: x[:len("Installed")] == "Installed",p))[0]
-        pacsize = float(p[18:-3])
-        m = p[-3:]
-        if m == "KiB":
-            pacsize = pacsize * (pow(1000,1)) 
-        elif m == "MiB":
-            pacsize = pacsize * (pow(1000,2))
-        elif m == "GiB":
-            pacsize = pacsize * (pow(1000,3))
+    for i in range(len(pac_names)):
+        name = pac_names[i]
+        size = pac_sizes[i].decode('utf-8')[18:]
 
-        sizecnt += pacsize
-        cnt +=1
-        print ("[DONE] | %i%% | Analize %s"%(int((cnt/pacs) * 100),pack.decode('utf-8')))
+        size_bytes = float(size[:-3])
+        power = size[-3:]
 
-    size = sizecnt / (pow(1000,3))
+        exponent = 0
+        if power == "KiB":
+            exponent = 1
+        elif power == "MiB":
+            exponent = 2
+        elif power == "GiB":
+            exponent = 3
+        else:
+            size_bytes = float(size[:-2])
+
+        size_bytes = size_bytes * pow(1000,exponent) 
+        pacs_info.append([name.decode(), size_bytes, size])
+        sizecnt += size_bytes
+
+    print(">done.")
+    size = sizecnt / pow(1000,3)
     time = t.time() - time
-    return pacs,size,time
+    print("> %d packages scanned in %.1f Seconds"%(len(pacs_info), time))
+    return pacs_info,size,time
 
 def save_log(date,npacs,size,time):
     logf = None
@@ -51,13 +58,39 @@ def save_log(date,npacs,size,time):
         logf = open (LOG_NAMEPATH,'w')
     else : logf = open(LOG_NAMEPATH,'a')
 
-    logs = "-- %s | analized %i packets in %.1f seconds, with %.3f GB\n"%(date,npacs,time,size)
+    logs = "> %s | scanned %i packets in %.1f seconds, with %.3f GB\n"%(date,npacs,time,size)
     logf.write(logs)
     logf.close()
-    print ("-- Log saved at %s"%LOG_NAMEPATH)
+    print ("> Log saved at %s"%LOG_NAMEPATH)
+
+def total_size():
+    pacs_info, size, time = process_packets()
+    date = t.strftime("%D %H:%M")
+    save_log(date,len(pacs_info),size,time)
+    print("-- %s | this system have %i packets, with total size of %.3f GB"%(date,
+        len(pacs_info), size))
+
+def list_by_size():
+    packets, size, time = process_packets()
+    sorted_pacs = sorted(packets, key=lambda x: x[1], reverse=True)
+    date = t.strftime("%D %H:%M")
+    print(date)
+    print("\n%-35s|%12s"%("PACKAGE","SIZE"))
+    for packet in sorted_pacs:
+        name = ("%s"%packet[0]).ljust(35, '-')
+        print("%s|%12s"%(name,packet[2]))
+
 
 if __name__ == "__main__":
-    pacs,size,time = process_packets()
-    date = t.strftime("%D %H:%M")
-    save_log(date,pacs,size,time)
-    print("-- %s | %i packets processed in %.1f seconds, with size of %.3f GB"%(date, pacs, time, size))
+    if len(sys.argv) > 1:
+        arg = sys.argv[1]
+        if arg == "-ls":
+            list_by_size()
+        elif arg == "-ts":
+            total_size()
+        else:
+            print(HELP)
+    else:
+        total_size()
+
+
