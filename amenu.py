@@ -29,14 +29,14 @@ class Button:
         self.screen.move (self.offset[0] + self.id, self.offset[1] + 0)
         curses.start_color()
         curses.init_pair(1,curses.COLOR_BLACK, curses.COLOR_WHITE)
-        self.screen.addstr(self.name + " | "+ self.category, curses.color_pair(1))
+        self.screen.addstr("%-40s %s"%(self.name, self.category), curses.color_pair(1))
         self.screen.refresh()
 
     def normal (self):
         self.screen.move (self.offset[0] + self.id, self.offset[1] + 0)
         curses.start_color()
         curses.init_pair(2,curses.COLOR_WHITE, curses.COLOR_BLACK)
-        self.screen.addstr(self.name + " | "+ self.category, curses.color_pair(2))
+        self.screen.addstr("%-40s %s"%(self.name, self.category), curses.color_pair(2))
         self.screen.refresh()
 
     def execute (self):
@@ -116,14 +116,14 @@ if __name__ == "__main__":
     atualmenu = ""
     for l in lines:
         l = str(l)
-        if "MENU" in l:
+        if " MENU" in l:
             atualmenu = get_string(l)
-        elif "EXEC" in l:
-            pos = find_string(l, "EXEC")+ 5
+        elif " EXEC" in l:
+            pos = find_string(l, " EXEC")+ 5
             name = get_string(l)
             execpath = l[pos+1:-1]
             menu.add_button(name, atualmenu, execpath)
-        elif "END" in l:
+        elif " END" in l:
             atualmenu = ""
     menu.run()
 
