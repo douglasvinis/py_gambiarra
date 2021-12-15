@@ -47,13 +47,20 @@ class Menu:
     def __init__(self, name):
         self.name = name
         self.buttons = []
+        self.max_rows = 0
         self.__setup()
 
     def __setup(self):
         self.screen = curses.initscr()
+        rows, cols = self.screen.getmaxyx()
+        self.max_rows = rows
         curses.curs_set(False)
 
     def add_button (self, name, category, execpath):
+        # A bad way of handling too much programs for one screen.
+        if (Button.id + 2) >= self.max_rows:
+            return
+
         b = Button(self.screen, name, category, execpath,
                 [2,2])
         b.normal()
