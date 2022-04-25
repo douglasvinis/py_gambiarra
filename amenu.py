@@ -1,136 +1,133 @@
-#! /usr/bin/env python
+#! /bin/python
 # -*- coding: utf-8 -*-
 """
 #  file: amenu.py
 #  license: GNU GPL v3(or lesser)
 #  author: Douglas Vinicius
 #  email: douglvini@gmail.com
-#  date: 2017-12-10
+#  date: 2017-12-10 -- 2022-04-22
 
 """
 """
-this simple scripts needs xdg_menu installed in the machine. it uses curses
-to make a interface with the user that can choose which app they want to open.
+This script will construct a vertical interactable menu that looks like this:
+Category1:
+    Program A
+    Program B
+Category2:
+    Program C
+    ...
 """
 import subprocess, curses, os
 
-class Button:
-    id = 0
-    def __init__(self,screen, name, category, execpath, offset=[0,0]):
+MESSAGE = "amenu: <Enter> or <Space> to open a program, <q> to exit."
+
+class Program:
+    def __init__(self, name, execpath):
         self.name = name
-        self.category = category
         self.execpath = execpath
-        self.screen = screen
-        self.offset = offset
-        self.id = Button.id
-        Button.id += 1
 
-    def hi (self):
-        self.screen.move (self.offset[0] + self.id, self.offset[1] + 0)
-        curses.start_color()
-        curses.init_pair(1,curses.COLOR_BLACK, curses.COLOR_WHITE)
-        self.screen.addstr("%-40s %s"%(self.name, self.category), curses.color_pair(1))
-        self.screen.refresh()
+def parse_line(line):
+    line = str(line.strip())
+    name = ""
+    kind = ""
+    execpath = ""
 
-    def normal (self):
-        self.screen.move (self.offset[0] + self.id, self.offset[1] + 0)
-        curses.start_color()
-        curses.init_pair(2,curses.COLOR_WHITE, curses.COLOR_BLACK)
-        self.screen.addstr("%-40s %s"%(self.name, self.category), curses.color_pair(2))
-        self.screen.refresh()
+    strings = line.split('"')
+    name = strings[1]
 
-    def execute (self):
-        #subprocess.call([self.execpath])
-        os.system("nohup " + self.execpath + "&")
+    remain = strings[2].strip()
+    has_execpath = remain.find(" ")
+    if has_execpath != -1:
+        kind = remain[:has_execpath]
+        execpath = remain[has_execpath+1:-1]
+    else:
+        kind = remain[:-1]
+    return (name, kind, execpath)
 
-class Menu:
-    def __init__(self, name):
-        self.name = name
-        self.buttons = []
-        self.max_rows = 0
-        self.__setup()
+def main(screen):
+    # parse the output of xdg_menu into the menu dictionary.
+    # @todo check if xdg_menu exists before using it.
+    menu = {}
+    lines = subprocess.check_output(["xdg_menu"]).splitlines()[1:-1] # dont include the "Applications" menu.
+    current_menu = ""
+    end_level = 0
+    program_count = 0
+    for line in lines:
+        name, kind, execpath = parse_line(line)
+        if kind == "MENU":
+            if current_menu == "": #if theres a sub menu ignore
+                # @todo check for hash collisions
+                current_menu = name
+                menu[current_menu] = []
+            end_level +=1
+        elif kind == "END":
+            end_level -= 1
+            if end_level == 0:
+                current_menu = ""
+        elif kind == "EXEC":
+            menu[current_menu].append(Program(name, execpath))
+            program_count += 1
 
-    def __setup(self):
-        self.screen = curses.initscr()
-        rows, cols = self.screen.getmaxyx()
-        self.max_rows = rows
-        curses.curs_set(False)
+    # drawing the menu.
+    top_pad = 2 # minimun 1
+    left_pad = 2
+    draw = curses.newpad(200, 200) #@cleanup rows shouldt be hardcoded.
+    cursor_index = 0
+    exec_program = False
+    cursor_col = 0
+    running = True
+    while running:
+        draw.clear()
+        program_index = 0
+        draw.addstr(0, left_pad, MESSAGE, curses.A_DIM)
+        row_offset = 0
+        for category, programs in menu.items():
+            col_offset = 0
+            draw.addstr(top_pad + row_offset, left_pad + col_offset, category, curses.A_DIM)
+            col_offset = 4
+            row_offset += 1
+            for program in programs:
+                attribute = 0
+                if program_index == cursor_index:
+                    attribute = curses.A_STANDOUT
+                    cursor_col = top_pad + row_offset
+                    if exec_program and program.execpath:
+                        os.system("nohup " + program.execpath + "&")
+                        exec_program = False
+                        running = False
+                draw.addstr(top_pad + row_offset, left_pad + col_offset, program.name, attribute)
+                row_offset += 1
+                program_index += 1
 
-    def add_button (self, name, category, execpath):
-        # A bad way of handling too much programs for one screen.
-        if (Button.id + 2) >= self.max_rows:
-            return
+        row_count, col_count = screen.getmaxyx()
 
-        b = Button(self.screen, name, category, execpath,
-                [2,2])
-        b.normal()
-        self.buttons.append(b)
+        # make the screen follow the cursor.
+        offset = (cursor_col + 3) - row_count
+        if offset < 0:
+            offset = 0
+        draw.refresh(offset, 0, 0, 0, row_count-1, col_count-1)
+        screen.noutrefresh()
 
-    def run (self):
-        key = None
-        atual = 0
-        while key != ord('q'):
-            for i in range(len(self.buttons)):
-                if i == atual:
-                    self.buttons[atual].hi()
-                else :
-                    self.buttons[i].normal()
-            key = self.screen.getch()
-            if key == ord('j'):
-                atual += 1
-                if atual == len(self.buttons):
-                    atual = 0
-            elif key == curses.KEY_ENTER or key == 13 or key == 10:
-                self.buttons[atual].execute()
-                key = ord('q')
-            elif key == ord('k'):
-                atual -= 1
-                if atual == -1:
-                    atual = len(self.buttons)-1
-        curses.endwin()
+        if running: # @todo maybe input should be at the start of the loop.
+            last_input = screen.getch() 
+        if last_input == ord('j') or last_input == curses.KEY_DOWN:
+            cursor_index += 1
+        elif last_input == ord('k') or last_input == curses.KEY_UP:
+            cursor_index -= 1
+        elif last_input == ord(' ') or last_input == ord('\n'):
+            exec_program = True
 
-def get_string (s):
-    inside = False
-    string = ""
-    for c in s:
-        if c == "\"" and not inside:
-            inside = True
-            continue
-        elif c == "\"" and inside:
-            inside = False
-            continue
-        if inside:
-            string += c
-    return string
+        # cursor_index = cursor_index % program_count
+        cursor_index = max(0, min(program_count-1, cursor_index))
 
-def find_string (s, word):
-    pos = 0
-    wp = 0
-    for i in range(len(s)):
-        if s[i] == word[wp]:
-            wp += 1
-        elif wp != 0:
-            wp = 0
-
-        if wp == len(word):
-            return i - wp
-    return 0
-
+        # exiting if the user presses <q>
+        if last_input == ord('q'):
+            running = False
 
 if __name__ == "__main__":
-    lines = subprocess.check_output(["xdg_menu"]).splitlines()
-    menu = Menu("Applications")
-    atualmenu = ""
-    for l in lines:
-        l = str(l)
-        if " MENU" in l:
-            atualmenu = get_string(l)
-        elif " EXEC" in l:
-            pos = find_string(l, " EXEC")+ 5
-            name = get_string(l)
-            execpath = l[pos+1:-1]
-            menu.add_button(name, atualmenu, execpath)
-        elif " END" in l:
-            atualmenu = ""
-    menu.run()
-
+    # curses.wrapper(main)
+    screen = curses.initscr()
+    curses.curs_set(0)
+    main(screen)
+    # exiting...
+    curses.endwin()

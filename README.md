@@ -1,14 +1,13 @@
-__Python Gambiarras__
-this is a set of python little python apps. Here a explanation of each one:
+This is a set of little python scripts:
 
-pyanimview.py - pygame sprite animation view.
+__amenu.py__ - with "xdg_menu" this scripts list all the programs in the system, and let you execute them.
 
-pyjoystickview.py - show button pressed on connected joystick which the pygame library.
+__pypacsize.py__ - with the package manager pacman it calculates the size of all installed programs.
 
-pypacsize.py - specific tool,works only on pacman package manager, get size of all installed packets.
+__unzipall.py__ - unzip multiple files with 7zip.
 
-unzipall.py - python script to unzip multiple files with 7z tool.
+__rawdisk_creator.py__ - write input files in the correct head/cylinder/sector bytes of a floppy disk raw .img file.
 
-rawdisk_creator.py - write the input files in the correct head/cylinder/sector bytes of a floppy disk raw .img file.
+__pyjoystickview.py__ - show button pressed on a connected joystick with pygame.
 
-amenu.py - with helps of "xdg_menu" this scripts list all the applications in the system, and let you run it.
+__pyanimview.py__ - pygame sprite animation view.
